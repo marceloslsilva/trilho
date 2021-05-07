@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Trilhos Pedreste</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <!-- Load Leaflet from CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+    crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+    integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+    crossorigin=""></script>
+
+  <!-- Load Esri Leaflet from CDN -->
+  <script src="https://unpkg.com/esri-leaflet@2.5.3/dist/esri-leaflet.js"
+    integrity="sha512-K0Vddb4QdnVOAuPJBHkgrua+/A9Moyv8AQEWi0xndQ+fqbRfAFd47z4A9u1AW/spLO0gEaiE1z98PK1gl5mC5Q=="
+    crossorigin=""></script>
+
+
+    
+  <script src="JSON/freuesia.js"></script>
+  <script src="JSON/Trilho1.js"></script>
+  <script src="JSON/Trilho2.js"></script>
+  <script src="JSON/Trilho3.js"></script>
+  <script src="JSON/Trilho4.js"></script>
+  <script src="JSON/esporoes.js"></script>
+  <script src="JSON/pinhao.js"></script>
+  <script src="JSON/ribeira.js"></script>
+  <script src="JSON/torrinho.js"></script>
+  <script src="JSON/ecopista_ponto.js"></script>
+  <script src="JSON/ecovia.js"></script>
+
+
+</head>
+<body>
+
+<style>
+  #info-pane {
+    position: absolute;
+    top: 20px;
+    right: 70px;
+    z-index: 400;
+    padding: 1em;
+    background: white;
+  }
+
+  .legend {
+    line-height: 18px;
+    color: #555;
+    background: blanchedalmond;
+}
+.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+#map {
+
+width: 100%;
+height: 500px;
+
+}
+
+
+</style>
+
+<div id="map"></div>
+<div id="info-pane" class="leaflet-bar">Dados</div>
+
+<script>
+  var map = L.map('map').setView([41.53, -7.94, ], 11.5);
+  var Ortofotomapa= L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Specialty/DeLorme_World_Base_Map/MapServer/tile/{z}/{y}/{x}', {
+	attribution: 'Tiles &copy; Esri &mdash; Copyright: &copy;2012 DeLorme'})
+    .addTo(map); //will be our basemap.
+
+  
+var OpenStreet = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {attribution:'<a href="https://www.openstreetmap.org/#map=17/-21.00148/-44.99806"</a>©️OpenStreetMap'});
+
+    L.Control.zoomHome = L.Control.extend({
+        options: {
+            position: 'topleft',
+            zoomInText: '+',
+            zoomInTitle: 'Zoom in',
+            zoomOutText: '-',
+            zoomOutTitle: 'Zoom out',
+            zoomHomeText: '<i class="fa fa-home" style="line-height:1.95;"></i>',
+            zoomHomeTitle: 'Zoom home'          
+        },
+
+    onAdd: function (map) {
+        var controlName = 'gin-control-zoom',
+            container = L.DomUtil.create('div', controlName + ' leaflet-bar'),
+            options = this.options;
+
+        this._zoomInButton = this._createButton(options.zoomInText, options.zoomInTitle,
+        controlName + '-in', container, this._zoomIn);
+        this._zoomHomeButton = this._createButton(options.zoomHomeText, options.zoomHomeTitle,
+        controlName + '-home', container, this._zoomHome);
+        this._zoomOutButton = this._createButton(options.zoomOutText, options.zoomOutTitle,
+        controlName + '-out', container, this._zoomOut);
+
+        this._updateDisabled();
+        map.on('zoomend zoomlevelschange', this._updateDisabled, this);
+        return container;
+    },
+
+    onRemove: function (map) {
+        map.off('zoomend zoomlevelschange', this._updateDisabled, this);
+    },
+
+    _zoomIn: function (e) {
+        this._map.zoomIn(e.shiftKey ? 3 : 1);
+    },
+
+    _zoomOut: function (e) {
+        this._map.zoomOut(e.shiftKey ? 3 : 1);
+    },
+
+    _zoomHome: function (e) {
+        map.setView([41.53, -7.94], 11.5 );
+    },
+
+    _createButton: function (html, title, className, container, fn) {
+        var link = L.DomUtil.create('a', className, container);
+        link.innerHTML = html;
+        link.href = '#';
+        link.title = title;
+
+        L.DomEvent.on(link, 'mousedown dblclick', L.DomEvent.stopPropagation)
+            .on(link, 'click', L.DomEvent.stop)
+            .on(link, 'click', fn, this)
+            .on(link, 'click', this._refocusOnMap, this);
+
+        return link;
+    },
+
+    _updateDisabled: function () {
+        var map = this._map,
+            className = 'leaflet-disabled';
+
+        L.DomUtil.removeClass(this._zoomInButton, className);
+        L.DomUtil.removeClass(this._zoomOutButton, className);
+
+        if (map._zoom === map.getMinZoom()) {
+            L.DomUtil.addClass(this._zoomOutButton, className);
+        }
+        if (map._zoom === map.getMaxZoom()) {
+            L.DomUtil.addClass(this._zoomInButton, className);
+        }
+    }
+});
+    
+    var zoomHome = new L.Control.zoomHome();
+    zoomHome.addTo(map);
+
+
+  
+
+  var zipcodes = L.esri.featureLayer({
+    url: 'https://services5.arcgis.com/AMh9EzyFGgthLT1q/ArcGIS/rest/services/FREGUESIAS/FeatureServer/0',
+    simplifyFactor: 0.35,
+    precision: 5,
+    fields: ['FID', 'Freguesia', 'pop2011'],
+    style: {
+        opacity:1000,
+      weight: 1
+    }
+  }).addTo(map);
+
+
+  zipcodes.on('mouseout', function (e) {
+    document.getElementById('info-pane').innerHTML = 'Clica';
+    zipcodes.resetFeatureStyle(oldId);
+  });
+
+  zipcodes.on('mouseover', function (e) {
+    oldId = e.layer.feature.id;
+    document.getElementById('info-pane').innerHTML = e.layer.feature.properties.Freguesia ;
+    zipcodes.setFeatureStyle(e.layer.feature.id, {
+      color: '#9D78D2',
+      weight: 3,
+      opacity: 1
+    });
+  });
+
+
+
+
+////Trilhos
+
+function style_wkl1(Trilho1){
+                return{
+        color: "#0000FF",
+        weight: 2,
+       opacity: 2 ,
+                };
+            }
+            
+    var Trilho1=L.geoJSON(Trilho1,{style: style_wkl1})
+    Trilho1.eachLayer(function(layer){layer.bindPopup("Trilho de Alto Esporões");
+    });
+    Trilho1.addTo(map);
+
+    var ribeira =L.geoJSON(ribeira,  {
+    pointToLayer: function (feature, latlng) {
+      var flickrsymbol = 'Icons/pedreste.png';
+      var mapIcon = L.icon({
+        iconUrl: flickrsymbol,
+        iconSize: [40, 40]
+      });
+        
+      return L.marker(latlng, {
+        icon: mapIcon
+      });
+    }})
+    ribeira.bindPopup(function (layer) {
+    return L.Util.template("<h1><b> " + "Trilho da Ribeira de Cavez" + "</b></h1><h2> Dificuldade: "  + "Média" + "</h2> <h2>Início/fim: " + "Aldeia: Vilela, Riodouro" + " <br><br> Distancia/Tempo: "+ "10,5km/4 e 5 horas" +"<br><a href='https://www.google.pt/maps/dir//41.5490085,-7.9191055/@41.5490105,-7.9192906,19z' target='_blank'>Direções Google Maps<i class='fa fa-car' aria-hidden='true'></i></a><br> <img src='Icons/xphfP6HT8RuS4nti' alt='foto' class='bind_img' width='300' height='200'/> </a> ");
+  });
+    ribeira.addTo(map);
+
+
+    var Trilhoribeira = L.layerGroup([Trilho1,ribeira]);
+
+    
+
+    function style_wkl2(Trilho2){
+                return{
+        color: "#A52A2A",
+        weight: 2,
+       opacity: 1 ,
+                };
+            }
+
+            
+    
+            
+    var Trilho2=L.geoJSON(Trilho2,{style: style_wkl2})
+    Trilho2.eachLayer(function(layer){layer.bindPopup("<h2>Trilho de Alto Esporões</h2>");
+    });
+    Trilho2.addTo(map);
+
+    var esporoes =L.geoJSON(esporoes,  {
+    pointToLayer: function (feature, latlng) {
+      var flickrsymbol = 'Icons/pedreste.png';
+      var mapIcon = L.icon({
+        iconUrl: flickrsymbol,
+        iconSize: [40, 40]
+      });
+        
+      return L.marker(latlng, {
+        icon: mapIcon
+      });
+    }})
+    esporoes.bindPopup(function (layer) {
+        return L.Util.template("<h1><b> " + "Trilho do Alto Esporões" + "</b></h1><h2> Dificuldade: "  + "Média" + "</h2> <h2>Início/fim: " + "Aldeia: Magusteiro, Riodouro" + " <br><br> Distancia/Tempo: "+ "8km/3h30 e 4horas" +"<br><a href='https://www.google.pt/maps/dir//Magusteiro,+Cabeceiras+de+Basto/@41.5918865,-7.9466227,358m/data=!3m1!1e3!4m8!4m7!1m0!1m5!1m1!1s0xd24d76f2363c6c5:0x20d8c86575db4eb1!2m2!1d-7.946236!2d41.5913894' target='_blank'>Direções Google Maps<i class='fa fa-car' aria-hidden='true'></i></a><br> <img src='Icons/9343136Master.jpg' alt='foto' class='bind_img' width='300' height='200'/> </a> ");
+  });
+    esporoes.addTo(map);
+
+    
+    var Trilhoesporoes = L.layerGroup([Trilho2, esporoes]);
+
+    
+
+
+    function style_wkl3(Trilho3){
+                return{
+        color: "#fd8d3c",
+        weight: 2,
+       opacity: 1 ,
+                };
+            }
+            
+    var Trilho3=L.geoJSON(Trilho3,{style: style_wkl3})
+    Trilho3.eachLayer(function(layer){layer.bindPopup("Trilho das Torrinheiras");
+    });
+    Trilho3.addTo(map);
+
+    function style_wkl4(Trilho4){
+                return{
+        color: "#f03b20",
+        weight: 2,
+       opacity: 1 ,
+                };
+            }
+            
+    var torrinho =L.geoJSON(torrinho,  {
+    pointToLayer: function (feature, latlng) {
+      var flickrsymbol = 'Icons/pedreste.png';
+      var mapIcon = L.icon({
+        iconUrl: flickrsymbol,
+        iconSize: [40, 40]
+      });
+        
+      return L.marker(latlng, {
+        icon: mapIcon
+      });
+    }})
+    torrinho.bindPopup(function (layer) {
+        return L.Util.template("<h1><b> " + "Trilho de Torrinheiras" + "</b></h1><h2> Dificuldade: "  + "Média" + "</h2> <h2>Início/fim: " + "Aldeia:Torrinheiras, Abadim" + " <br><br>  "+ "10km/3h30 e 4horas" +"<br><a href='https://www.google.pt/maps/dir//Capela+de+Nossa+Senhora+da+Concei%C3%A7%C3%A3o,+Cabeceiras+de+Basto/@41.5332874,-8.0553659,16232m/data=!3m1!1e3!4m8!4m7!1m0!1m5!1m1!1s0xd24db1e5bdadbe9:0xb345fd00fd8e6538!2m2!1d-8.0215706!2d41.5355349' target='_blank'>Direções Google Maps<i class='fa fa-car' aria-hidden='true'></i></a><br> <img src='Icons/9343136Master.jpg' alt='foto' class='bind_img' width='300' height='200'/> </a> ");
+  });
+    torrinho.addTo(map);
+
+
+ 
+
+    var Trilhotorrinheiras = L.layerGroup([Trilho3, torrinho]);
+
+
+    ////ecopista tamega
+var ecopista_ponto = L.geoJSON(ecopista_ponto,{
+    pointToLayer: function (feature, latlng) {
+      var ecosym = 'Icons/ecovia.png';
+      var ecoicon = L.icon({
+        iconUrl:ecosym ,
+        iconSize: [40, ]
+      });
+
+      return L.marker(latlng, {
+        icon: ecoicon
+      });
+    }})
+    ecopista_ponto.bindPopup(function (layer) {
+    return L.Util.template( '<a href  = "https://cabeceirasdebasto.pt/equipamentos-publicos-ecopista" target="_blank"> Ecopista do Tâmega </a');
+  });
+    ecopista_ponto.addTo(map);
+
+    
+
+/////ecopista
+
+function styleaf(ecovia){
+                return{
+                    fillColor: "#ff7800",
+                    color: '#000',
+                    weight: 2,
+                    opacity: 1,
+                };
+            }
+            
+var ecovia =L.geoJSON(ecovia,{style: styleaf})
+    ecovia.eachLayer(function(layer){layer.bindPopup("Ecopista do Tâmega");
+    });
+    ecovia.addTo(map);
+
+var Ecopistatamega = L.layerGroup([ecopista_ponto, ecovia]);
+
+
+var baseMaps = {
+
+"Esri DeLorme":Ortofotomapa,
+"Openstreet":OpenStreet,
+
+};
+
+  var overlayMaps = {
+  
+
+    "Trilho de Alto Esporões":Trilhoesporoes,
+    "Trilho da Ribeira de Cavez":Trilhoribeira,
+    "Trilho das Torrinheiras":Trilhotorrinheiras,
+    "Ecopista do Tâmega":Ecopistatamega,
+
+};
+
+
+
+
+// geolocation:
+
+map.locate({setView: false, maxZoom: 12});
+
+function onLocationFound(e) {
+  yourLocation = L.marker(e.latlng);
+   overlayMaps["Tu"] = yourLocation;
+  yourLocation.bindPopup("<h3>Estás aqui!<h3>")
+
+  L.control.layers(baseMaps, overlayMaps).addTo(map);
+}
+
+map.on('locationfound', onLocationFound);
+
+function onLocationError(e) {
+  alert(e.message);
+
+  L.control.layers(baseMaps, overlayMaps).addTo(map);
+}
+
+L.control.scale({imperial: false}).addTo(map);
+
+
+
+       
+
+</script>
+
+
+<br>
+        <div class="row">
+            <div class="col-4 col-6-medium col-12-small">
+                <article class="box style2">
+                    
+                    <img src="Icons/UqYRHHaCGwyrm-N9" alt="Publicidade" width="426" height="250" />
+                    <p><b><h2>Trilho do Pisão e Nariz do Mundo</h2></b></p>
+                    <p>Dificuldade: Médio <br> Percurso:    <img src="Icons/repita-o-simbolo-de-seta-circular-desenhada-a-mao (1).png" alt="Download GPX ">  <br> <img src="Icons/relogio (1).png" alt="Download GPX ">  4h <br> <img src="Icons/montanhas.png" alt="Download GPX ">  12,1km </p>
+                    <p><strong>Download:</strong></p>
+
+                    <a href="Icons/pr5-cbc-trilho-do-pisao-e-nariz-do-mundo.kml" download="KMZ">
+
+                        <img src="Icons/variante-do-formato-de-arquivo-kmz (1).png" alt="Download KMZ "> 
+                    </a>
+                
+                   <a href="Icons/pr5-cbc-trilho-do-pisao-e-nariz-do-mundo (1).rar" download="GPX">
+
+                        <img src="Icons/simbolo-de-formato-de-arquivo-gpx (3).png" alt="Download GPX "> 
+                    </a>
+                                    
+                </article>
+            </div>
+            <div class="col-4 col-6-medium col-12-small">
+                <article class="box style2">
+                    
+                    <img src="Icons/6d7NB9JPg-PvOO-i" alt="Publicidade" width="426" height="250" />
+                    <p><b><h2>Trilho das Torrinheiras</h2></b></p>
+                    <p>Dificuldade: Médio <br> Percurso:    <img src="Icons/repita-o-simbolo-de-seta-circular-desenhada-a-mao (1).png" alt="Download GPX ">  <br> <img src="Icons/relogio (1).png" alt="Download GPX ">  3h30 e 4h <br> <img src="Icons/montanhas.png" alt="Download GPX ">  10km </p>
+                     
+                    <p><strong>Download:</strong></p>
+                    <a href="Icons/trilho-de-torrinheiras-pr3-cbc.kml" download="KMZ">
+
+                        <img src="Icons/variante-do-formato-de-arquivo-kmz (1).png" alt="Download KMZ "> 
+                    </a>
+                    <a href="Icons/trilho-de-torrinheiras-pr3-cbc (1).rar" download="GPX">
+
+                        <img src="Icons/simbolo-de-formato-de-arquivo-gpx (3).png" alt="Download GPX "> 
+                    </a>
+                    
+                   
+                </article>
+            </div>
+            <div class="col-4 col-6-medium col-12-small">
+                <article class="box style2">
+                    
+                    <img src="Icons/xphfP6HT8RuS4nti" alt="Publicidade" width="426" height="250" />
+                    <p><b><h2>Trilho da Ribeira de Cavez</h2></b></p>
+                    <p>Dificuldade: Médio <br> Percurso:    <img src="Icons/repita-o-simbolo-de-seta-circular-desenhada-a-mao (1).png" alt="Download GPX ">  <br> <img src="Icons/relogio (1).png" alt="Download GPX ">  4h e 5h <br> <img src="Icons/montanhas.png" alt="Download GPX ">  10,7km </p>
+                    <p><strong>Download:</strong></p>
+                    <a href="Icons/trilho-da-ribeira-de-cavez.kml" download="KMZ">
+
+                        <img src="Icons/variante-do-formato-de-arquivo-kmz (1).png" alt="Download KMZ "> 
+                    </a>
+                    <a href="Icons/trilho-da-ribeira-de-cavez (4).rar" download="GPX">
+
+                        <img src="Icons/simbolo-de-formato-de-arquivo-gpx (3).png" alt="Download GPX ">   
+                    </a>
+                    
+                
+  
+                   
+                </article>
+            </div>       
+</article>
+
+</body>
+</html>
